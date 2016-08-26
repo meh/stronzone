@@ -4,12 +4,13 @@ use std::io::Cursor;
 use byteorder::{LittleEndian, WriteBytesExt};
 
 use Led;
+use super::Coordinates;
 
 pub struct Grid {
 	socket: UdpSocket,
 
 	brightness:  i32,
-	coordinates: [[u8; 8]; 8],
+	coordinates: Coordinates,
 	data:        [Led; 8 * 8],
 }
 
@@ -27,7 +28,7 @@ impl Grid {
 		})
 	}
 
-	pub fn coordinates(&mut self, coordinates: [[u8; 8]; 8]) {
+	pub fn coordinates(&mut self, coordinates: Coordinates) {
 		self.coordinates = coordinates;
 	}
 
