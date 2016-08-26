@@ -3,6 +3,9 @@ name = "stronzone"
 version = "0.1.0"
 authors = ["meh. <meh@schizofreni.co>"]
 
+[profile.release]
+lto = true
+
 [dependencies]
 clap   = "2"
 ws281x = "0.1"
@@ -12,4 +15,4 @@ lazy_static = "0.1"
 
 palette   = "0.2"
 regex     = "0.1"
-bdf       = { version = "0.5", path = "../../rust/bdf" }
+bdf       = "0.5"
