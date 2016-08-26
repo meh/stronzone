@@ -1,3 +1,7 @@
+#[macro_use]
+extern crate lazy_static;
+extern crate regex;
+
 extern crate byteorder;
 
 pub extern crate palette;
@@ -12,6 +16,8 @@ pub use canvas::Canvas;
 
 pub mod grid;
 pub use grid::Grid;
+
+pub mod util;
 
 pub fn canvas() -> Canvas {
 	Canvas::new()
