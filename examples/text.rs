@@ -4,54 +4,8 @@ use std::time::Duration;
 use std::collections::VecDeque;
 
 extern crate stronzone;
-extern crate bdf;
-
-#[macro_use]
-extern crate lazy_static;
-
-extern crate regex;
-use regex::Regex;
-
 extern crate clap;
 use clap::{Arg, App};
-
-lazy_static! {
-	static ref AT:      Regex = Regex::new(r"\{(\d+) (\d+)\}").unwrap();
-	static ref COORDS:  Regex = Regex::new(r"\[(\w+)\]").unwrap();
-	static ref ADDR:    Regex = Regex::new(r"[\]}]\s*([^\]}]*)$").unwrap();
-	static ref HEX_RGB: Regex = Regex::new(r"#([:xdigit:]{2})([:xdigit:]{2})([:xdigit:]{2})").unwrap();
-}
-
-fn grid(def: &str, brightness: i32) -> ((u32, u32), stronzone::Grid) {
-	let at = if let Some(caps) = AT.captures(def) {
-		(caps.at(1).unwrap().parse().unwrap(), caps.at(2).unwrap().parse().unwrap())
-	}
-	else {
-		(0, 0)
-	};
-
-	let mut grid = stronzone::grid::new();
-	grid.brightness(brightness);
-
-	if let Some(caps) = COORDS.captures(def) {
-		grid.coordinates(match caps.at(1) {
-			Some("DOWN") => stronzone::grid::DOWN,
-			_            => stronzone::grid::UP,
-		});
-	}
-
-	(at, grid.connect(ADDR.captures(def).unwrap().at(1).unwrap()).unwrap())
-}
-
-fn color(value: &str) -> Option<stronzone::Led> {
-	HEX_RGB.captures(value.as_ref()).map(|captures| {
-		stronzone::Led::new(
-			u8::from_str_radix(captures.at(1).unwrap_or("0"), 16).unwrap_or(0) as f32 / 255.0,
-			u8::from_str_radix(captures.at(2).unwrap_or("0"), 16).unwrap_or(0) as f32 / 255.0,
-			u8::from_str_radix(captures.at(3).unwrap_or("0"), 16).unwrap_or(0) as f32 / 255.0,
-		)
-	})
-}
 
 fn main() {
 	let matches = App::new("text")
@@ -105,7 +59,7 @@ fn main() {
 
 	// Create the canvas based on definition.
 	let mut canvas = matches.values_of("grid").unwrap().fold(stronzone::canvas(), |canvas, def| {
-		let (at, grid) = grid(def, brightness);
+		let (at, grid) = stronzone::util::grid(def, brightness);
 		canvas.add(at, grid)
 	});
 
@@ -119,12 +73,13 @@ fn main() {
 
 	// The rainbow colors to create the gradient.
 	let mut colors = matches.values_of("color").map(|v| v.collect()).unwrap_or(vec!["#ffffff"]).iter()
-		.map(|c| color(c).unwrap()).collect::<VecDeque<_>>();
+		.map(|c| stronzone::util::color(c).unwrap()).collect::<VecDeque<_>>();
 
 	// The current offset within the first glyph.
 	let mut offset = 0;
 
 	loop {
+		// Calculate gradient based on canvas width and defined colors.
 		let gradient = stronzone::color::Gradient::new(colors.iter().cloned());
 
 		for (x, led) in (0 .. canvas.width()).zip(gradient.take(canvas.width() as usize)) {
@@ -146,9 +101,7 @@ fn main() {
 		canvas.sync().unwrap();
 		canvas.clear();
 
-		thread::sleep(Duration::from_millis(time));
-
-		// Shift text or offset.
+		// Slide text or offset.
 		if offset >= font.bounds().width {
 			let ch = text.pop_front().unwrap();
 			text.push_back(ch);
@@ -163,5 +116,7 @@ fn main() {
 			let color = colors.pop_front().unwrap();
 			colors.push_back(color);
 		}
+
+		thread::sleep(Duration::from_millis(time));
 	}
 }
