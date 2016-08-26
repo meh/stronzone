@@ -16,9 +16,10 @@ extern crate clap;
 use clap::{Arg, App};
 
 lazy_static! {
-	static ref AT:     Regex = Regex::new(r"\{(\d+) (\d+)\}").unwrap();
-	static ref COORDS: Regex = Regex::new(r"\[(\w+)\]").unwrap();
-	static ref ADDR:   Regex = Regex::new(r"[\]}]\s*([^\]}]*)$").unwrap();
+	static ref AT:      Regex = Regex::new(r"\{(\d+) (\d+)\}").unwrap();
+	static ref COORDS:  Regex = Regex::new(r"\[(\w+)\]").unwrap();
+	static ref ADDR:    Regex = Regex::new(r"[\]}]\s*([^\]}]*)$").unwrap();
+	static ref HEX_RGB: Regex = Regex::new(r"#([:xdigit:]{2})([:xdigit:]{2})([:xdigit:]{2})").unwrap();
 }
 
 fn grid(def: &str, brightness: i32) -> ((u32, u32), stronzone::Grid) {
@@ -42,11 +43,21 @@ fn grid(def: &str, brightness: i32) -> ((u32, u32), stronzone::Grid) {
 	(at, grid.connect(ADDR.captures(def).unwrap().at(1).unwrap()).unwrap())
 }
 
+fn color(value: &str) -> Option<stronzone::Led> {
+	HEX_RGB.captures(value.as_ref()).map(|captures| {
+		stronzone::Led::new(
+			u8::from_str_radix(captures.at(1).unwrap_or("0"), 16).unwrap_or(0) as f32 / 255.0,
+			u8::from_str_radix(captures.at(2).unwrap_or("0"), 16).unwrap_or(0) as f32 / 255.0,
+			u8::from_str_radix(captures.at(3).unwrap_or("0"), 16).unwrap_or(0) as f32 / 255.0,
+		)
+	})
+}
+
 fn main() {
 	let matches = App::new("text")
 		.version("0.1.0")
 		.author("meh. <meh@schizofreni.co>")
-		.about("Draw sliding rainbow text.")
+		.about("Draw sliding gradient text.")
 		.arg(Arg::with_name("time")
 			.short("t")
 			.long("time")
@@ -75,6 +86,12 @@ fn main() {
 			.long("y")
 			.takes_value(true)
 			.help("The Y offset withing the glyph."))
+		.arg(Arg::with_name("color")
+			.short("c")
+			.long("color")
+			.takes_value(true)
+			.multiple(true)
+			.help("The colors in the gradient (default is #ffffff)."))
 		.arg(Arg::with_name("TEXT")
 			.index(1)
 			.required(true)
@@ -101,20 +118,14 @@ fn main() {
 	text.push_back(' ');
 
 	// The rainbow colors to create the gradient.
-	let mut rainbow = VecDeque::new();
-	rainbow.push_back(stronzone::Led::new(1.00, 0.00, 0.00));
-	rainbow.push_back(stronzone::Led::new(1.00, 0.50, 0.00));
-	rainbow.push_back(stronzone::Led::new(1.00, 1.00, 0.00));
-	rainbow.push_back(stronzone::Led::new(0.00, 1.00, 0.00));
-	rainbow.push_back(stronzone::Led::new(0.00, 0.00, 1.00));
-	rainbow.push_back(stronzone::Led::new(0.30, 0.00, 0.51));
-	rainbow.push_back(stronzone::Led::new(0.54, 0.00, 1.00));
+	let mut colors = matches.values_of("color").map(|v| v.collect()).unwrap_or(vec!["#ffffff"]).iter()
+		.map(|c| color(c).unwrap()).collect::<VecDeque<_>>();
 
 	// The current offset within the first glyph.
 	let mut offset = 0;
 
 	loop {
-		let gradient = stronzone::color::Gradient::new(rainbow.iter().cloned());
+		let gradient = stronzone::color::Gradient::new(colors.iter().cloned());
 
 		for (x, led) in (0 .. canvas.width()).zip(gradient.take(canvas.width() as usize)) {
 			let xx = x + offset;
@@ -147,10 +158,10 @@ fn main() {
 			offset += 1;
 		}
 
-		// Shift rainbow by one.
+		// Shift colors by one.
 		{
-			let color = rainbow.pop_front().unwrap();
-			rainbow.push_back(color);
+			let color = colors.pop_front().unwrap();
+			colors.push_back(color);
 		}
 	}
 }
