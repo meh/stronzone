@@ -7,5 +7,9 @@ authors = ["meh. <meh@schizofreni.co>"]
 clap   = "2"
 ws281x = "0.1"
 
+byteorder   = "0.5"
+lazy_static = "0.1"
+
 palette   = "0.2"
-byteorder = "0.5"
+regex     = "0.1"
+bdf       = { version = "0.5", path = "../../rust/bdf" }
