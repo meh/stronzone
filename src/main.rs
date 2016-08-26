@@ -1,11 +1,27 @@
 use std::net::UdpSocket;
-use std::{env, mem, slice};
+use std::{mem, slice};
 
 extern crate ws281x;
 
+extern crate clap;
+use clap::{Arg, App};
+
 fn main() {
-	let address = env::args().nth(1).expect("address is missing");
-	let port    = env::args().nth(2).expect("port is missing").parse().expect("port is not a number");
+	let matches = App::new("stronzone")
+		.version("0.1.0")
+		.author("meh. <meh@schizofreni.co>")
+		.about("Stronzone con le lucette in avvicinamento.")
+		.arg(Arg::with_name("ADDRESS")
+			.takes_value(true)
+			.index(1)
+			.required(true)
+			.help("The address to bind to."))
+		.arg(Arg::with_name("PORT")
+			.takes_value(true)
+			.index(2)
+			.required(true)
+			.help("The port to bind to."))
+		.get_matches();
 
 	let mut handle = ws281x::handle::new()
 		.dma(5)
@@ -16,7 +32,11 @@ fn main() {
 			.build().unwrap())
 		.build().unwrap();
 
-	let     socket = UdpSocket::bind((&address[..], port)).expect("could not bind");
+	let socket = UdpSocket::bind((
+		matches.value_of("ADDRESS").unwrap(),
+		matches.value_of("PORT").unwrap().parse().unwrap()
+	)).unwrap();
+
 	let mut buffer = [0; 512];
 
 	while let Ok((size, _source)) = socket.recv_from(&mut buffer) {
