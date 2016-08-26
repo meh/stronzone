@@ -54,7 +54,7 @@ fn main() {
 
 	let time       = matches.value_of("time").unwrap_or("100").parse().unwrap();
 	let brightness = matches.value_of("brightness").unwrap_or("55").parse().unwrap();
-	let y_offset   = matches.value_of("y").unwrap_or("0").parse::<u32>().unwrap();
+	let y_offset   = matches.value_of("y").unwrap_or("0").parse::<i32>().unwrap();
 	let font       = stronzone::font::read(File::open(matches.value_of("font").unwrap()).unwrap()).unwrap();
 
 	// Create the canvas based on definition.
@@ -86,11 +86,16 @@ fn main() {
 			let xx = x + offset;
 
 			if let Some(glyph) = text.get((xx / font.bounds().width) as usize).and_then(|ch| font.glyphs().get(ch)) {
-				let map = glyph.map();
-				let xx  = xx % font.bounds().width;
+				let xx = (((xx % font.bounds().width) as i32)
+					.overflowing_sub(glyph.bounds().x).0) as u32;
 
 				for y in 0 .. canvas.height() {
-					if y < font.bounds().height && xx < font.bounds().width && map.get(xx, y + y_offset) {
+					let yy = ((y as i32 + y_offset)
+						.overflowing_sub((font.bounds().height - glyph.bounds().height) as i32).0
+						.overflowing_add(glyph.bounds().y).0
+						.overflowing_sub(font.bounds().y).0) as u32;
+
+					if yy < glyph.bounds().height && xx < glyph.bounds().width && glyph.map().get(xx, yy) {
 						canvas.set((x, y), led);
 					}
 				}
