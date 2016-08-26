@@ -71,7 +71,7 @@ fn main() {
 	}
 	text.push_back(' ');
 
-	// The rainbow colors to create the gradient.
+	// The colors to create the gradient from.
 	let mut colors = matches.values_of("color").map(|v| v.collect()).unwrap_or(vec!["#ffffff"]).iter()
 		.map(|c| stronzone::util::color(c).unwrap()).collect::<VecDeque<_>>();
 
